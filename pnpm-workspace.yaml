@@ -1,5 +1,0 @@
-packages:
-  - packages/common
-  - services/user-service
-  - services/template-service
-  - api-gateway
