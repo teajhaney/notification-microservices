@@ -49,3 +49,19 @@ declare interface NotificationStatus {
   createdAt: string;
   updatedAt: string;
 }
+
+declare interface ThrottlerStorageRecord {
+  totalHits: number;
+  timeToExpire: number;
+  blockDuration: number;
+  key: string;
+  limit: number;
+  isBlocked: boolean;
+  timeToBlockExpire: number;
+}
+
+declare interface ProxyOptions {
+  extraHeaders?:
+    | Record<string, string>
+    | ((req: UserRequest) => Record<string, string>);
+}

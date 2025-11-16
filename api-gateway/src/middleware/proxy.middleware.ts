@@ -4,12 +4,6 @@ import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import proxy from 'express-http-proxy';
 import { Request, Response, NextFunction } from 'express';
 
-type ProxyOptions = {
-  extraHeaders?:
-    | Record<string, string>
-    | ((req: UserRequest) => Record<string, string>);
-};
-
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
   private readonly logger = new Logger(ProxyMiddleware.name);
