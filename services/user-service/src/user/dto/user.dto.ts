@@ -8,6 +8,7 @@ import {
   Min,
   Max,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class RegisterDto {
   @IsString()
@@ -58,12 +59,22 @@ export class UpdatePreferenceDto {
 }
 
 export class PaginationDto {
+  /**
+   * Page number (1-indexed)
+   * Query parameters come as strings, so we need @Type to transform them to numbers
+   */
   @IsOptional()
+  @Type(() => Number) // Transform string query param to number
   @IsInt()
   @Min(1)
   page?: number = 1;
 
+  /**
+   * Number of items per page (max 100)
+   * Query parameters come as strings, so we need @Type to transform them to numbers
+   */
   @IsOptional()
+  @Type(() => Number) // Transform string query param to number
   @IsInt()
   @Min(1)
   @Max(100) // Cap to prevent abuse

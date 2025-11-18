@@ -8,14 +8,18 @@ import { ProxyMiddleware } from './middleware/proxy.middleware';
 import { Response, NextFunction, Request } from 'express';
 import { JwtHelper } from './common/jwt-helper';
 import { v4 as uuidv4 } from 'uuid';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
-const { port, userServiceUrl, orchestratorUrl, templateServiceUrl, redisUrl } =
-  config();
+const { port, userServiceUrl, orchestratorUrl, templateServiceUrl } = config();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
-  });
+  // Create app WITHOUT logger configuration
+  // Winston will be used automatically since LoggerModule is imported
+  const app = await NestFactory.create(AppModule);
+
+  // Get Winston logger instance and use it as NestJS logger
+  // This makes NestJS use Winston for all its internal logging too
+  app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
   // Enable CORS
   app.enableCors({
     origin: 'http://localhost:3000', // Allowed origins
@@ -24,7 +28,10 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
 
-  app.useGlobalInterceptors(new LoggingInterceptor());
+  // Get LoggingInterceptor from dependency injection container
+  // This ensures Winston logger is properly injected
+  const loggingInterceptor = app.get(LoggingInterceptor);
+  app.useGlobalInterceptors(loggingInterceptor);
 
   // Error filter
   app.useGlobalFilters(new HttpExceptionFilter());
@@ -71,12 +78,14 @@ async function bootstrap() {
       path: '/template',
       target: templateServiceUrl,
       requireAuth: () => true, // all template routes require authentication
+      // No extra headers needed for template routes
+      // (Idempotency and correlation IDs are only needed for notifications)
       extraHeaders: undefined,
     },
     {
       path: '/notifications',
       target: orchestratorUrl,
-      requireAuth: () => false, // all orchestrator routes require authentication
+      requireAuth: () => true, // all orchestrator routes require authentication
       extraHeaders: (req: UserRequest) => {
         const resolveHeaderValue = (
           value: string | string[] | undefined,
@@ -108,6 +117,14 @@ async function bootstrap() {
 
   // Register proxy routes
   proxyRoutes.forEach(({ path, target, requireAuth, extraHeaders }) => {
+    // Validate target URL exists before setting up route
+    if (!target) {
+      console.error(
+        `⚠️  Warning: Target URL not configured for path ${path}. This route will not work.`,
+      );
+      return;
+    }
+
     app.use(path, (req: Request, res: Response, next: NextFunction) => {
       // Validate JWT token and set user if present (for authenticated routes)
       const userReq = req as unknown as UserRequest;
@@ -128,7 +145,7 @@ async function bootstrap() {
       if (userReq.proxy) {
         const addUserHeader = requireAuth(req);
         try {
-          userReq.proxy(target!, path, addUserHeader, { extraHeaders });
+          userReq.proxy(target, path, addUserHeader, { extraHeaders });
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'Unknown error';
@@ -154,7 +171,7 @@ async function bootstrap() {
   console.log(`📡 User Service: ${userServiceUrl}`);
   console.log(`📡 Orchestrator Service: ${orchestratorUrl}`);
   console.log(`📡 Template Service: ${templateServiceUrl}`);
-  console.log(`📡 Redis: ${redisUrl}`);
+  console.log(`📡 Redis: Enabled`);
   console.log(
     `\n✅ Notification endpoints available at: http://localhost:${port || 3000}/notifications\n`,
   );

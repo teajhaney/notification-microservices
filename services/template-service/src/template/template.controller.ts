@@ -69,16 +69,52 @@ export class TemplateController {
     return this.templatesService.render(id, renderDto);
   }
 
-  @Get('event/:event/channel/:channel')
+  /**
+   * Get ALL templates for an event and language
+   *
+   * Endpoint: GET /template/event/:event?language=en
+   *
+   * This returns all active templates for the event/language.
+   * Channels are determined from the templates themselves (their channel arrays).
+   * This is the preferred method - channels come from templates, not from the request.
+   */
+  @Get('event/:event')
+  getAllTemplatesByEvent(
+    @Param('event') event: string,
+    @Query('language') language?: string,
+  ) {
+    return this.templatesService.getAllTemplatesByEvent(
+      event.toUpperCase(),
+      language ?? 'en',
+    );
+  }
+
+  /**
+   * Get template by event, channel, and language
+   *
+   * Endpoint: GET /template/event/:event/:channel?language=en
+   *
+   * IMPORTANT: The database stores channel as an array (e.g., [EMAIL, PUSH]),
+   * so we need to pass an array to the service method, even though we're
+   * requesting a specific channel. The service will find templates where
+   * the channel array contains the requested channel.
+   *
+   * NOTE: This is kept for backward compatibility, but prefer using
+   * GET /template/event/:event to get all templates and determine channels from them.
+   */
+  @Get('event/:event/:channel')
   getByEvent(
     @Param('event') event: string,
     @Param('channel') channel: NotificationChannel,
     @Query('language') language?: string,
   ) {
+    // Convert single channel to array (service expects array)
     const channelEnum = channel.toUpperCase() as NotificationChannel;
+    const channelsArray = [channelEnum]; // Wrap in array
+
     return this.templatesService.getByEvent(
       event.toUpperCase(),
-      channelEnum,
+      channelsArray, // Pass as array
       language ?? 'en',
     );
   }

@@ -15,9 +15,11 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptors
 import { RedisModule } from './common/redis.module';
 import { Reflector } from '@nestjs/core';
 import { JwtHelper } from './common/jwt-helper';
+import { LoggerModule } from './common/logger/logger.module'; // Winston Logger Module
 
 @Module({
   imports: [
+    LoggerModule, // Winston logger module (must be imported first for global logger)
     RedisModule,
     ProxyModule,
     AuthModule,

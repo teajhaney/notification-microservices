@@ -414,13 +414,53 @@ export class TemplateService {
     };
   }
 
+  /**
+   * Get ALL templates for an event and language
+   *
+   * This is used when we want to determine channels from templates themselves,
+   * rather than specifying channels in the request.
+   *
+   * Returns all active templates for the event/language combination.
+   * Each template can have different channels (e.g., one [EMAIL], one [PUSH], or one [EMAIL, PUSH]).
+   */
+  async getAllTemplatesByEvent(
+    event: string,
+    language = 'en',
+  ): Promise<Array<Template & { versions: TemplateVersion[] }>> {
+    const cacheKey = `template:event:all:${event}:${language}`;
+
+    // Try to get from cache first
+    const cachedTemplates =
+      await this.cacheService.get<
+        Array<Template & { versions: TemplateVersion[] }>
+      >(cacheKey);
+    if (cachedTemplates) {
+      return cachedTemplates;
+    }
+
+    // Fetch all active templates for this event/language
+    const templates = await this.prisma.template.findMany({
+      where: {
+        event,
+        language,
+        isActive: true,
+      },
+      include: { versions: { orderBy: { version: 'desc' }, take: 1 } },
+    });
+
+    // Cache for 30 minutes
+    await this.cacheService.set(cacheKey, templates, 1800);
+
+    return templates;
+  }
+
   // Get by event/channel/lang (for dynamic sends)
   async getByEvent(
     event: string,
-    channel: NotificationChannel,
+    channels: NotificationChannel[],
     language = 'en',
-  ) {
-    const cacheKey = `template:event:${event}:${channel}:${language}`;
+  ): Promise<Template & { versions: TemplateVersion[] }> {
+    const cacheKey = `template:event:${event}:${channels.join(',')}:${language}`;
 
     // Try to get from cache first
     const cachedTemplate = await this.cacheService.get<
@@ -431,14 +471,28 @@ export class TemplateService {
     }
 
     // If not in cache, fetch from database
+    // IMPORTANT: The query uses hasSome to find templates where the channel array
+    // contains ANY of the requested channels. So if we request [EMAIL], it will
+    // find templates with channel: [EMAIL] OR channel: [EMAIL, PUSH]
     const template = await this.prisma.template.findFirst({
-      where: { event, channel: { has: channel }, language, isActive: true },
+      where: {
+        event,
+        channel: { hasSome: channels }, // Find templates where channel array contains requested channel(s)
+        language,
+        isActive: true,
+      },
       include: { versions: { orderBy: { version: 'desc' }, take: 1 } },
     });
-    if (!template)
-      throw new NotFoundException(
-        `No template for ${event}/${channel}/${language}`,
-      );
+
+    if (!template) {
+      // Provide helpful error message
+      const errorMessage =
+        `No template found for event="${event}", channels=[${channels.join(', ')}], language="${language}". ` +
+        `Make sure a template exists with: ` +
+        `event="${event}", channel array containing ${channels.length === 1 ? `"${channels[0]}"` : `one of [${channels.join(', ')}]`}, ` +
+        `language="${language}", and isActive=true`;
+      throw new NotFoundException(errorMessage);
+    }
 
     // Cache for 30 minutes
     await this.cacheService.set(cacheKey, template, 1800);
@@ -447,7 +501,7 @@ export class TemplateService {
   }
 
   //DELETE
-  async delete(id: string) {
+  async delete(id: string): Promise<Template> {
     // Get template first to invalidate cache properly
     const template = await this.prisma.template.findUnique({
       where: { id },

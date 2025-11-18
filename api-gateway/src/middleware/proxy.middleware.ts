@@ -116,10 +116,35 @@ export class ProxyMiddleware implements NestMiddleware {
             );
             return;
           }
-          const message =
-            err instanceof Error ? err.message : 'Unknown proxy error';
+
+          // Extract error message with better handling
+          let message = 'Unknown proxy error';
+          //   let errorDetails = '';
+
+          if (err instanceof Error) {
+            message = err.message || 'Unknown proxy error';
+            // errorDetails = err.stack || '';
+
+            // Check for common connection errors
+            if (err.message.includes('ECONNREFUSED')) {
+              message = `Connection refused: Cannot connect to ${targetUrl}. Is the service running?`;
+            } else if (
+              err.message.includes('ETIMEDOUT') ||
+              err.message.includes('timeout')
+            ) {
+              message = `Connection timeout: Service at ${targetUrl} did not respond in time`;
+            } else if (err.message.includes('ENOTFOUND')) {
+              message = `Host not found: Cannot resolve ${targetUrl}`;
+            }
+          } else if (typeof err === 'string') {
+            message = err;
+          } else if (err && typeof err === 'object') {
+            message = JSON.stringify(err);
+          }
+
           const stack = err instanceof Error ? err.stack : undefined;
           this.logger.error(`Proxy error to ${targetUrl}: ${message}`, stack);
+
           res.status(500).json({
             success: false,
             message: 'Proxy server error',
