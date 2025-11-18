@@ -370,6 +370,7 @@ export class TemplateService {
     user: User & { preferences: Preference | null },
     data: Record<string, unknown>,
   ) {
+    // Extract user-specific data if provided, and keep rest at top level
     const { user: manualUserDataRaw, ...restData } = {
       ...data,
     } as Record<string, unknown> & { user?: unknown };
@@ -377,24 +378,35 @@ export class TemplateService {
       manualUserDataRaw && typeof manualUserDataRaw === 'object'
         ? (manualUserDataRaw as Record<string, unknown>)
         : undefined;
-    return {
-      ...restData,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        push_token: user.push_token,
-        preferences: user.preferences
-          ? {
-              email_opt_in: user.preferences.email_opt_in,
-              push_opt_in: user.preferences.push_opt_in,
-              language: user.preferences.language,
-            }
-          : undefined,
-        ...(manualUserData ?? {}),
-      },
+
+    // Build user object with database user data + any manual user data + top-level data
+    // This makes variables available both as {{firstName}} AND {{user.firstName}}
+    const userObject = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      push_token: user.push_token,
+      preferences: user.preferences
+        ? {
+            email_opt_in: user.preferences.email_opt_in,
+            push_opt_in: user.preferences.push_opt_in,
+            language: user.preferences.language,
+          }
+        : undefined,
+      ...(manualUserData ?? {}), // Merge any user-specific data from request
+      ...restData, // Also include top-level data in user object for convenience
     };
+
+    // Build context with:
+    // 1. Top-level data (e.g., { firstName: "John" } → accessible as {{firstName}})
+    // 2. User object with database user data + top-level data (accessible as {{user.firstName}})
+    const context = {
+      ...restData, // Top-level variables like firstName, orderId, etc.
+      user: userObject,
+    };
+
+    return context;
   }
 
   private compileTemplate(

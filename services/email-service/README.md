@@ -22,14 +22,32 @@ PORT=3004
 RABBITMQ_URL=amqp://guest:guest@localhost:5672
 EMAIL_QUEUE=email.queue
 
-SMTP_HOST=smtp.mailtrap.io
+# SMTP Configuration
+# For Gmail (⚠️ IMPORTANT: Use 'smtp.gmail.com', NOT 'mtp.gmail.com'):
+SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=your-user
-SMTP_PASS=your-pass
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password  # Use App Password, not regular password!
 SMTP_SECURE=false
 SMTP_FROM_NAME=Notification Bot
-SMTP_FROM_EMAIL=notifications@example.com
+SMTP_FROM_EMAIL=your-email@gmail.com
+
+# For Mailtrap (testing):
+# SMTP_HOST=smtp.mailtrap.io
+# SMTP_PORT=587
+# SMTP_USER=your-mailtrap-user
+# SMTP_PASS=your-mailtrap-pass
+# SMTP_SECURE=false
 ```
+
+**⚠️ Common Gmail Configuration Issues:**
+
+1. **Typo in SMTP_HOST**: Use `smtp.gmail.com` (with 's'), NOT `mtp.gmail.com`
+2. **App Password Required**: Gmail requires an App Password, not your regular password
+   - Go to Google Account → Security → 2-Step Verification → App Passwords
+   - Generate an App Password for "Mail"
+   - Use that 16-character password as `SMTP_PASS`
+3. **Port**: Use `587` for TLS or `465` for SSL (set `SMTP_SECURE=true` for 465)
 
 All variables are loaded through `@nestjs/config`, so any process manager can override them.
 

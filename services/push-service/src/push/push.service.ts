@@ -22,6 +22,9 @@ export class PushService {
 
   /**
    * Configure VAPID keys up-front so every send call is lean.
+   *
+   * VAPID (Voluntary Application Server Identification) keys are required for Web Push.
+   * Generate them using: npx web-push generate-vapid-keys
    */
   private configureVapid(): void {
     const subject =
@@ -31,10 +34,26 @@ export class PushService {
     const privateKey = this.configService.get<string>('vapid.privateKey');
 
     if (!publicKey || !privateKey) {
-      throw new Error('VAPID keys are not configured for push-service');
+      const missing: string[] = [];
+      if (!publicKey) missing.push('VAPID_PUBLIC_KEY');
+      if (!privateKey) missing.push('VAPID_PRIVATE_KEY');
+
+      this.logger.error(
+        `❌ VAPID keys are not configured. Missing: ${missing.join(', ')}`,
+      );
+      this.logger.error(
+        '📝 To generate VAPID keys, run: npx web-push generate-vapid-keys',
+      );
+      this.logger.error('📚 See README.md for detailed setup instructions');
+      throw new Error(
+        `VAPID keys are not configured for push-service. Missing: ${missing.join(', ')}. Run 'npx web-push generate-vapid-keys' to generate them.`,
+      );
     }
 
     webpush.setVapidDetails(subject, publicKey, privateKey);
+    this.logger.log(
+      `✅ VAPID keys configured successfully (subject: ${subject})`,
+    );
   }
 
   /**

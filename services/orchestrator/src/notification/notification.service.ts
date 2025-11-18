@@ -67,7 +67,7 @@ export class NotificationService {
     // Step 1: Generate unique notification ID
     const notificationId = uuidv4();
     this.logger.log(
-      `Processing notification request ${notificationId} initiated by ${initiatorId}`,
+      `Processing notification request ${notificationId} initiated by admin`,
     );
 
     try {
@@ -427,7 +427,6 @@ export class NotificationService {
     return regularUsers;
   }
 
-
   /**
    * Process a single notification channel using a specific template
    *
@@ -469,6 +468,10 @@ export class NotificationService {
 
     // Step 2: Render template
     // The template-service will replace variables in the template with actual data
+    this.logger.debug(
+      `Rendering template ${template.id} with data: ${JSON.stringify(data)}`,
+    );
+    
     const rendered = await this.templateServiceClient.renderTemplate(
       template.id,
       data,
@@ -481,9 +484,29 @@ export class NotificationService {
       channel as 'EMAIL' | 'PUSH', // Pass channel so we can filter the response
       authToken,
     );
+    
+    this.logger.debug(
+      `Rendered template result - Subject: "${rendered.subject}", Body length: ${rendered.html?.length || rendered.body?.length || 0}`,
+    );
 
     // Step 3: Build RabbitMQ message
     // This is what email-service and push-service will receive
+    // IMPORTANT: Template service returns 'html' for EMAIL and 'body' for PUSH
+    // We need to extract the correct field based on channel
+    const messageBody =
+      channel === NotificationChannel.EMAIL
+        ? rendered.html || rendered.body || ''
+        : rendered.body || '';
+
+    if (!messageBody) {
+      this.logger.error(
+        `No body content found in rendered template for channel ${channel}. Rendered message: ${JSON.stringify(rendered)}`,
+      );
+      throw new Error(
+        `Template rendering failed: no body content for channel ${channel}`,
+      );
+    }
+
     const message: NotificationMessage = {
       notificationId,
       userId,
@@ -499,7 +522,7 @@ export class NotificationService {
       content: {
         subject: rendered.subject,
         title: rendered.title,
-        body: rendered.body,
+        body: messageBody, // Use html for EMAIL, body for PUSH
       },
       metadata: {
         language,
@@ -507,6 +530,10 @@ export class NotificationService {
         correlationId: correlationId || notificationId,
       },
     };
+
+    this.logger.debug(
+      `Built message for ${channel} - Body length: ${messageBody.length} characters`,
+    );
 
     // Step 4: Publish to appropriate queue
     if (channel === NotificationChannel.EMAIL) {

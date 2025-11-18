@@ -6,9 +6,7 @@
  *
  * IMPORTANT ARCHITECTURE NOTES:
  * - JWT token is ONLY used for authentication/authorization (checking admin role)
- * - JWT token does NOT determine who receives notifications
- * - If userId is provided in request body → send to that specific user
- * - If userId is NOT provided → broadcast to ALL users in database
+
  *
  * Endpoints:
  * - POST /notifications - Create a new notification (admin only)
@@ -120,8 +118,7 @@ export class NotificationController {
     // JWT token is ONLY used to verify admin role - it does NOT determine recipients
     if (req.user?.role !== 'admin') {
       throw new ForbiddenException(
-        'Only administrators can send notifications. Your role: ' +
-          req.user?.role,
+        'Only administrators can send notifications '
       );
     }
 

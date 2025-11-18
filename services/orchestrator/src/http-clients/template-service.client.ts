@@ -24,7 +24,8 @@ export interface RenderedMessage {
   channel: 'EMAIL' | 'PUSH';
   subject?: string; // for email
   title?: string; // for push
-  body: string;
+  body?: string; // for push notifications (template service returns this)
+  html?: string; // for email (template service returns html for EMAIL, not body)
   recipient?: {
     id: string;
     name: string;
@@ -75,10 +76,7 @@ export class TemplateServiceClient {
    * Fetch ALL templates for an event and language
    *
    * This calls: GET /template/event/:event?language=:language
-   *
-   * This is the NEW preferred method - it returns all templates for the event,
-   * and channels are determined from the templates themselves (their channel arrays).
-   * This way, you don't need to specify channels in the notification request.
+
    */
   async getAllTemplatesByEvent(
     event: string,
@@ -152,7 +150,6 @@ export class TemplateServiceClient {
       );
     }
   }
-
 
   /**
    * Render a template with provided data

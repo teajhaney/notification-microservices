@@ -15,8 +15,11 @@ import type { ConsumeMessage } from 'amqplib';
 import { EmailService } from './email.service';
 import { NotificationMessage } from '../common/notification-message.interface';
 
-type AmqpConnection = Awaited<ReturnType<typeof amqp.connect>>;
-type AmqpChannel = Awaited<ReturnType<AmqpConnection['createChannel']>>;
+type AmqpConnection = Awaited<ReturnType<typeof amqp.connect>> | null;
+
+type AmqpChannel = Awaited<
+  ReturnType<NonNullable<AmqpConnection>['createChannel']>
+> | null;
 
 /**
  * RabbitMQ consumer that pulls email jobs and hands them to EmailService.
@@ -57,7 +60,7 @@ export class EmailConsumer implements OnModuleInit, OnModuleDestroy {
     this.connection = connection;
     this.channel = channel;
 
-    connection.on('error', (error) => {
+    connection.on('error', (error: Error) => {
       this.logger.error(`RabbitMQ connection error: ${error.message}`);
     });
 
@@ -90,6 +93,10 @@ export class EmailConsumer implements OnModuleInit, OnModuleDestroy {
           msg.content.toString('utf8'),
         ) as NotificationMessage;
 
+        this.logger.debug(
+          `Received message - Notification ID: ${payload.notificationId}, Channel: ${payload.channel}, Body length: ${payload.content?.body?.length || 0} characters`,
+        );
+
         if (payload.channel !== 'EMAIL') {
           this.logger.warn(
             `Received non-email payload on email queue: ${payload.channel}`,
@@ -97,6 +104,24 @@ export class EmailConsumer implements OnModuleInit, OnModuleDestroy {
           channel.ack(msg);
           return;
         }
+
+        // Log the full payload structure for debugging
+        this.logger.debug(
+          `Email payload structure: ${JSON.stringify(
+            {
+              notificationId: payload.notificationId,
+              userId: payload.userId,
+              recipient: payload.recipient,
+              content: {
+                subject: payload.content?.subject,
+                bodyLength: payload.content?.body?.length,
+                bodyPreview: payload.content?.body?.substring(0, 100),
+              },
+            },
+            null,
+            2,
+          )}`,
+        );
 
         await this.emailService.sendEmail(payload);
         channel.ack(msg);
@@ -122,7 +147,7 @@ export class EmailConsumer implements OnModuleInit, OnModuleDestroy {
   /**
    * Helper to ensure channel exists when accessed.
    */
-  private assertChannel(): AmqpChannel {
+  private assertChannel(): NonNullable<AmqpChannel> {
     if (!this.channel) {
       throw new Error('RabbitMQ channel is not initialized');
     }
