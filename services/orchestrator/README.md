@@ -2,6 +2,8 @@
 
 The Orchestrator Service is the central coordinator for the notification microservices architecture. It receives notification requests, orchestrates the entire notification flow, and publishes messages to RabbitMQ queues for processing by email and push notification services.
 
+> **✅ Status**: This service has been tested and is production-ready. It has been tested with email and push notification flows.
+
 ## 📋 Table of Contents
 
 - [Overview](#overview)
@@ -228,12 +230,13 @@ X-Correlation-ID: <optional-correlation-id>
     "name": "John Doe",
     "orderId": "12345"
   },
-  "channels": ["EMAIL", "PUSH"],  // Optional: filters available channels from templates
-  "language": "en"                 // Optional: defaults to user preference or "en"
+  "channels": ["EMAIL", "PUSH"], // Optional: filters available channels from templates
+  "language": "en" // Optional: defaults to user preference or "en"
 }
 ```
 
 **Important Notes:**
+
 - `channels` field is **optional** - if not provided, all channels from templates are used
 - Channels are determined from templates themselves (templates define what channels are available)
 - Admin users (`role='admin'`) are automatically excluded from notifications
@@ -423,6 +426,7 @@ curl -X POST http://localhost:3002/notifications \
 ```
 
 **What happens:**
+
 - Fetches all templates for `WELCOME_MESSAGE/en`
 - If templates have `[EMAIL]` and `[PUSH]` → both channels are used
 - Still respects user preferences (won't send if user opted out)
@@ -443,6 +447,7 @@ curl -X POST http://localhost:3002/notifications \
 ```
 
 **What happens:**
+
 - Fetches ALL users with `role='user'` (excludes admins)
 - For each user, queues notifications based on their preferences
 - Each user gets their own message in the queue
@@ -549,6 +554,7 @@ The service determines which channels to use:
    - Priority: Request language → User preference → Default "en"
 
 **Example:**
+
 - Template 1: `event: "WELCOME_MESSAGE"`, `channel: [EMAIL]` → EMAIL available
 - Template 2: `event: "WELCOME_MESSAGE"`, `channel: [PUSH]` → PUSH available
 - Result: Both EMAIL and PUSH are available (if user opted in)
@@ -556,6 +562,7 @@ The service determines which channels to use:
 ### User Filtering
 
 **Admin users are automatically excluded:**
+
 - Only users with `role='user'` receive notifications
 - Users with `role='admin'` are filtered out automatically
 - This applies to both specific user targeting and broadcast scenarios
@@ -563,6 +570,7 @@ The service determines which channels to use:
 ### Message Queuing
 
 **Each user gets their own message:**
+
 - For 3 users → 3 separate messages queued (one per user)
 - Each message contains that specific user's data
 - If one user fails, others still get queued (error handling continues)

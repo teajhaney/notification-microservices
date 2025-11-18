@@ -25,6 +25,8 @@
 
 Push notification service that consumes messages from RabbitMQ and sends Web Push notifications to users' browsers/devices.
 
+> **⚠️ Testing Status**: This service has been implemented but **has not been fully tested** in a production environment. We welcome contributions, testing, and feedback from the community. See the [Testing Push Notifications](#testing-push-notifications) section below for testing instructions.
+
 ## Environment Variables
 
 The push-service requires the following environment variables:

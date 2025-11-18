@@ -23,7 +23,9 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+User management service for the notification microservices system. Handles user CRUD operations, preferences management, push token storage, and JWT authentication.
+
+> **✅ Status**: This service has been tested and is production-ready. User management, preferences, and authentication have been tested.
 
 ## Project setup
 

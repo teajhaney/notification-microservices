@@ -2,6 +2,8 @@
 
 This worker listens to the `email.queue` RabbitMQ queue, renders the payload produced by the orchestrator, and delivers real emails through your SMTP provider (Mailtrap, SendGrid SMTP, SES SMTP, etc.).
 
+> **✅ Status**: This service has been tested and is production-ready. It has been tested with Gmail SMTP and other providers.
+
 ---
 
 ### 🧱 Architecture

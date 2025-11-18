@@ -23,7 +23,9 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Template management service for the notification microservices system. Handles template storage, versioning, and rendering with Handlebars.
+
+> **✅ Status**: This service has been tested and is production-ready. Template rendering and variable substitution have been tested.
 
 ## Project setup
 
